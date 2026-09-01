@@ -10,6 +10,18 @@ export type VectorVisualizationPoint = {
   readonly text_preview?: string;
 };
 
+/**
+ * Neighbour relationship between two points, by index into `points`.
+ * Supplied by the host for layouts that position nodes by connectivity rather
+ * than by the projected coordinates. Optional: a plugin must still render when
+ * the host has no edges to give it.
+ */
+export type VectorVisualizationEdge = {
+  readonly s: number;
+  readonly t: number;
+  readonly d: number;
+};
+
 export type VectorVisualizationConfig = Readonly<Record<string, boolean | number | string>>;
 
 export type VectorVisualizationConfigControl = {
@@ -24,6 +36,7 @@ export type VectorVisualizationConfigControl = {
 
 export type VectorVisualizationProps = {
   points: readonly Readonly<VectorVisualizationPoint>[];
+  edges?: readonly Readonly<VectorVisualizationEdge>[];
   selectedEventId: string;
   onSelect: (eventId: string) => void;
   config?: VectorVisualizationConfig;

@@ -7,6 +7,7 @@ import { sql } from "./database.plain";
 import { EVENT_VECTORS_TABLE } from "./schemas";
 import { sha256 } from "./normalize";
 import type { EmbeddingEventRow, EventRow, EventVectorRow } from "./types";
+import { buildVectorEdges } from "./vector-edges";
 
 export const HISTORY_VECTOR_DEPLOYMENTS = ["dual-4090", "cloudflare"] as const;
 export const HISTORY_VECTOR_ACTORS = ["human", "agent"] as const;
@@ -308,6 +309,7 @@ export async function visualizeHistoryVectors(
       coverage: { eligible: eligible.length, embedded: 0, missing: eligible.length, sampled: 0 },
       projection: { method: "deterministic-pca-3d", explained_variance: null },
       points: [],
+      edges: [],
       error: `No ${request.deployment} vector store is connected.`,
     };
   }
@@ -321,6 +323,7 @@ export async function visualizeHistoryVectors(
         coverage: { eligible: eligible.length, embedded: 0, missing: eligible.length, sampled: 0 },
         projection: { method: "deterministic-pca-3d", explained_variance: null },
         points: [],
+      edges: [],
         error: `No ${request.deployment} vector table is connected.`,
       };
     }
@@ -369,6 +372,10 @@ export async function visualizeHistoryVectors(
         explained_variance: projection.explainedVariance,
       },
       points,
+      // Computed from the raw vectors, not from the projected coordinates, so a
+      // force-directed visualization lays points out by true neighbourhood in
+      // the full embedding space rather than by their PCA shadow.
+      edges: buildVectorEdges(vectorRows.map((row) => row.vector)),
     };
   } catch (error) {
     const reason = error instanceof Error ? error.message : String(error);
