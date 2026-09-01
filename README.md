@@ -4,6 +4,7 @@
 
 [![CI](https://github.com/Soul-Brews-Studio/lanceglass/actions/workflows/ci.yml/badge.svg)](https://github.com/Soul-Brews-Studio/lanceglass/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-67d391.svg)](LICENSE)
+[![Version](https://img.shields.io/badge/version-v26.9.1--alpha.1401-6f8cff.svg)](package.json)
 [![Bun](https://img.shields.io/badge/runtime-Bun-f9f1e1.svg)](https://bun.sh)
 [![LanceDB](https://img.shields.io/badge/database-LanceDB-6f8cff.svg)](https://lancedb.com)
 
@@ -16,6 +17,9 @@ Everything runs on your machine. The bundled fixture proves the complete path
 without reading your real agent history.
 
 ![Lanceglass architecture](docs/lanceglass-architecture.visual-check.2048x1320.dark.png)
+
+See every durable Events, Import, Jobs, History, and Vector Map state in the
+[GitHub-renderable UI state gallery](docs/ui-state-gallery.md).
 
 ## Why Lanceglass
 
@@ -173,8 +177,8 @@ The repository keeps the original smoke-first course:
 7. [Run the UI](lessons/07-ui.md)
 8. [Add optional embeddings](lessons/08-optional-embeddings.md)
 
-The interactive system diagram is
-[`docs/lanceglass-architecture.html`](docs/lanceglass-architecture.html).
+The [documentation index](docs/README.md) links the interactive system diagram,
+the complete screenshot gallery, and both extension contracts.
 
 ## Development
 

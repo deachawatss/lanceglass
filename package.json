@@ -1,6 +1,6 @@
 {
   "name": "lanceglass",
-  "version": "26.8.31-alpha.1340",
+  "version": "26.9.1-alpha.1401",
   "private": true,
   "description": "A local-first looking glass for Claude Code and Codex JSONL histories, powered by LanceDB.",
   "license": "MIT",

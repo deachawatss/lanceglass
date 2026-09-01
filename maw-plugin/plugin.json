@@ -1,6 +1,6 @@
 {
   "name": "jsonl-scanner",
-  "version": "26.8.31-alpha.1340",
+  "version": "26.9.1-alpha.1401",
   "entry": "./index.ts",
   "sdk": "^1.0.0",
   "description": "Maw CLI adapter for the Lanceglass LanceDB importer and UI.",
