@@ -1,0 +1,14 @@
+.data/
+.DS_Store
+node_modules/
+ui/dist/
+maw-plugin/dist/
+coverage/
+.env
+.env.*
+!.env.example
+*.log
+.agents/
+.impeccable/
+docs/*.visual-check.html
+docs/*.visual-check.json

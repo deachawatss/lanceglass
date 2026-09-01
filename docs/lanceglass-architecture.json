@@ -1,0 +1,352 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "Lanceglass v26.8.31-alpha.1340",
+    "locale": "en",
+    "quality_profile": "showcase",
+    "viewBox": [
+      1380,
+      790
+    ]
+  },
+  "components": [
+    {
+      "id": "jsonlRoots",
+      "type": "external",
+      "label": "JSONL Roots",
+      "sublabel": "Claude Code, Codex, fixtures",
+      "pos": [
+        30,
+        300
+      ],
+      "size": [
+        180,
+        72
+      ]
+    },
+    {
+      "id": "importRunner",
+      "type": "backend",
+      "label": "Import Runner",
+      "sublabel": "jobs, Bun CLI, maw jscan",
+      "pos": [
+        250,
+        60
+      ],
+      "size": [
+        190,
+        72
+      ]
+    },
+    {
+      "id": "importer",
+      "type": "backend",
+      "label": "Importer",
+      "sublabel": "discover, plan, parse, batch",
+      "pos": [
+        250,
+        300
+      ],
+      "size": [
+        180,
+        72
+      ]
+    },
+    {
+      "id": "normalizer",
+      "type": "backend",
+      "label": "Normalizer",
+      "sublabel": "raw blocks to canonical events",
+      "pos": [
+        470,
+        300
+      ],
+      "size": [
+        180,
+        72
+      ]
+    },
+    {
+      "id": "reactUi",
+      "type": "frontend",
+      "label": "React UI",
+      "sublabel": "Events + Jobs workspaces",
+      "pos": [
+        1000,
+        60
+      ],
+      "size": [
+        170,
+        72
+      ]
+    },
+    {
+      "id": "bunApi",
+      "type": "backend",
+      "label": "Bun HTTP API",
+      "sublabel": "localhost routes + static UI",
+      "pos": [
+        750,
+        60
+      ],
+      "size": [
+        190,
+        72
+      ]
+    },
+    {
+      "id": "plainRepositories",
+      "type": "backend",
+      "label": "database.plain",
+      "sublabel": "events \u00b7 sources \u00b7 files",
+      "pos": [
+        690,
+        300
+      ],
+      "size": [
+        205,
+        72
+      ]
+    },
+    {
+      "id": "plainDb",
+      "type": "database",
+      "label": "Plain LanceDB",
+      "sublabel": "events, provenance, source files",
+      "pos": [
+        945,
+        300
+      ],
+      "size": [
+        205,
+        72
+      ]
+    },
+    {
+      "id": "embeddingRunner",
+      "type": "backend",
+      "label": "Embedding Runner",
+      "sublabel": "explicit, bounded, resumable",
+      "pos": [
+        690,
+        500
+      ],
+      "size": [
+        205,
+        72
+      ]
+    },
+    {
+      "id": "ollama",
+      "type": "external",
+      "label": "Ollama",
+      "sublabel": "bge-m3 \u00b7 1,024 Float32",
+      "pos": [
+        690,
+        630
+      ],
+      "size": [
+        205,
+        72
+      ]
+    },
+    {
+      "id": "vectorRepositories",
+      "type": "backend",
+      "label": "database.vector",
+      "sublabel": "contract-checked vector repository",
+      "pos": [
+        930,
+        500
+      ],
+      "size": [
+        200,
+        72
+      ]
+    },
+    {
+      "id": "vectorDb",
+      "type": "database",
+      "label": "Vector LanceDB",
+      "sublabel": "event_vectors only \u00b7 optional",
+      "pos": [
+        1160,
+        500
+      ],
+      "size": [
+        190,
+        72
+      ]
+    }
+  ],
+  "boundaries": [
+    {
+      "kind": "region",
+      "label": "Local Lanceglass runtime",
+      "wraps": [
+        "importRunner",
+        "importer",
+        "normalizer",
+        "reactUi",
+        "bunApi",
+        "plainRepositories",
+        "plainDb",
+        "embeddingRunner",
+        "vectorRepositories",
+        "vectorDb"
+      ],
+      "pad": 24
+    }
+  ],
+  "connections": [
+    {
+      "id": "rootsImport",
+      "from": "jsonlRoots",
+      "to": "importer",
+      "label": "scan + stream",
+      "variant": "emphasis",
+      "labelAt": [
+        230,
+        386
+      ]
+    },
+    {
+      "id": "runnerImport",
+      "from": "importRunner",
+      "to": "importer",
+      "label": "job or direct CLI",
+      "variant": "emphasis",
+      "fromSide": "bottom",
+      "toSide": "top"
+    },
+    {
+      "id": "importNormalize",
+      "from": "importer",
+      "to": "normalizer",
+      "label": "raw blocks",
+      "variant": "emphasis",
+      "labelAt": [
+        450,
+        386
+      ]
+    },
+    {
+      "id": "normalizePersist",
+      "from": "normalizer",
+      "to": "plainRepositories",
+      "label": "canonical rows",
+      "variant": "emphasis",
+      "labelAt": [
+        670,
+        386
+      ]
+    },
+    {
+      "id": "plainPersist",
+      "from": "plainRepositories",
+      "to": "plainDb",
+      "label": "query + append",
+      "variant": "emphasis",
+      "labelAt": [
+        920,
+        386
+      ]
+    },
+    {
+      "id": "uiApi",
+      "from": "reactUi",
+      "to": "bunApi",
+      "label": "HTTP /api/*",
+      "variant": "emphasis"
+    },
+    {
+      "id": "apiRunner",
+      "from": "bunApi",
+      "to": "importRunner",
+      "label": "start, tail, cancel"
+    },
+    {
+      "id": "apiRead",
+      "from": "bunApi",
+      "to": "plainRepositories",
+      "label": "events + status",
+      "fromSide": "bottom",
+      "toSide": "top"
+    },
+    {
+      "id": "plainCandidates",
+      "from": "plainRepositories",
+      "to": "embeddingRunner",
+      "label": "eligible text pages",
+      "fromSide": "bottom",
+      "toSide": "top",
+      "variant": "dashed",
+      "labelAt": [
+        792,
+        435
+      ]
+    },
+    {
+      "id": "ollamaEmbed",
+      "from": "embeddingRunner",
+      "to": "ollama",
+      "label": "POST /api/embed",
+      "fromSide": "bottom",
+      "toSide": "top",
+      "variant": "emphasis",
+      "labelAt": [
+        792,
+        601
+      ]
+    },
+    {
+      "id": "vectorUpsert",
+      "from": "embeddingRunner",
+      "to": "vectorRepositories",
+      "label": "validated vectors + hash",
+      "variant": "emphasis",
+      "labelAt": [
+        912,
+        586
+      ]
+    },
+    {
+      "id": "vectorPersist",
+      "from": "vectorRepositories",
+      "to": "vectorDb",
+      "label": "upsert only",
+      "variant": "emphasis",
+      "labelAt": [
+        1145,
+        586
+      ]
+    }
+  ],
+  "cards": [
+    {
+      "dot": "emerald",
+      "title": "Idempotent plain intake",
+      "items": [
+        "Source-file manifest separates new, changed, known, and reconcile states.",
+        "Stable event and provenance IDs make retries safe across bounded 5,000-block commits."
+      ]
+    },
+    {
+      "dot": "violet",
+      "title": "Embedding is derived and opt-in",
+      "items": [
+        "Import never opens the vector store or calls Ollama.",
+        "A later bounded pass pages plain rows, validates bge-m3 output, and commits durable vector batches."
+      ]
+    },
+    {
+      "dot": "amber",
+      "title": "Local-first boundary",
+      "items": [
+        "The Bun server binds to localhost; plain and vector LanceDB stores are physically separate.",
+        "Job history is in-memory; imported rows and optional vectors survive server restarts."
+      ]
+    }
+  ]
+}

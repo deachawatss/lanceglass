@@ -1,0 +1,6 @@
+{"type":"user","uuid":"u-1","sessionId":"smoke-session","timestamp":"2026-08-30T00:00:00.000Z","cwd":"/demo/lanceglass","message":{"role":"user","content":"How do we import JSONL and know whether it is new?"}}
+{"type":"assistant","uuid":"a-1","parentUuid":"u-1","sessionId":"smoke-session","timestamp":"2026-08-30T00:00:01.000Z","cwd":"/demo/lanceglass","message":{"role":"assistant","content":[{"type":"text","text":"Use a source-file manifest plus stable event UUID and block identity."},{"type":"tool_use","id":"tool-1","name":"Bash","input":{"command":"wc -l session.jsonl"}}]}}
+{"type":"user","uuid":"r-1","parentUuid":"a-1","sessionId":"smoke-session","timestamp":"2026-08-30T00:00:02.000Z","cwd":"/demo/lanceglass","message":{"role":"user","content":[{"type":"tool_result","tool_use_id":"tool-1","content":"6 session.jsonl"}]}}
+{"type":"summary","sessionId":"smoke-session","timestamp":"2026-08-30T00:00:03.000Z","summary":"Created a smoke-first typed JSONL database lab."}
+{"type":"progress","uuid":"p-1","sessionId":"smoke-session","data":{"type":"hook_progress"}}
+{deliberately corrupt smoke line

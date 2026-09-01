@@ -1,0 +1,2 @@
+{"type":"user","uuid":"u-2","sessionId":"smoke-session-2","timestamp":"2026-08-30T00:01:00.000Z","cwd":"/demo/lanceglass","message":{"role":"user","content":"Can a partial import resume without duplicating earlier rows?"}}
+{"type":"assistant","uuid":"a-2","parentUuid":"u-2","sessionId":"smoke-session-2","timestamp":"2026-08-30T00:01:01.000Z","cwd":"/demo/lanceglass","message":{"role":"assistant","content":"Yes. The source-file manifest skips the completed batch on resume."}}

@@ -1,0 +1,16 @@
+{
+  "name": "jsonl-scanner",
+  "version": "26.8.31-alpha.1340",
+  "entry": "./index.ts",
+  "sdk": "^1.0.0",
+  "description": "Maw CLI adapter for the Lanceglass LanceDB importer and UI.",
+  "author": "Soul-Brews-Studio",
+  "cli": {
+    "command": "jsonl-scanner",
+    "aliases": ["jscan"],
+    "help": "maw jscan <plan|import|embed|status|events|schema|ui> — use the same LanceDB core as Lanceglass"
+  },
+  "weight": 0,
+  "license": "MIT",
+  "schemaVersion": 1
+}
