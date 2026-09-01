@@ -5,6 +5,44 @@ image uses synthetic data. The routes shown here are durable and refresh-safe;
 query parameters preserve the selected workspace, filters, period, date, and
 vector inspector state.
 
+## Public static fixture deployment
+
+The [live Cloudflare demo](https://lanceglass-fixture-demo.laris.workers.dev/)
+serves this exact React application and a complete mock of its HTTP API. All
+1,000 events are synthetic and compiled into the Worker. There is no KV, D1,
+R2, database binding, filesystem access, secret, or persistence layer.
+
+### Events and live intake
+
+The header states the storage boundary continuously. Events, facets, source
+switching, intake polling, visualization, and the responsive shell use the
+same components as the local LanceDB application.
+
+![Cloudflare static demo events workspace](./screenshots/cloudflare-static-events.png)
+
+### Read-only import inspection
+
+Fast Inspect exercises the real modal and plan controls against a deterministic
+fixture response. Import confirmation and Jobs can be explored, but the demo
+never writes or retains state.
+
+![Cloudflare static demo import plan](./screenshots/cloudflare-static-plan.png)
+
+### History
+
+The fixture API reconstructs a week of session rows across Claude, Codex, four
+projects, and four synthetic directories, including expandable session detail
+and deterministic vector projections.
+
+![Cloudflare static demo history workspace](./screenshots/cloudflare-static-history.png)
+
+### Jobs
+
+Jobs exposes one completed simulation whose terminal explicitly records the
+no-storage boundary. Reloading always returns the same fixture run.
+
+![Cloudflare static demo jobs workspace](./screenshots/cloudflare-static-jobs.png)
+
 ## Events workspace
 
 ### Stream with pending intake

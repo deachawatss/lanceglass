@@ -21,6 +21,11 @@ without reading your real agent history.
 See every durable Events, Import, Jobs, History, and Vector Map state in the
 [GitHub-renderable UI state gallery](docs/ui-state-gallery.md).
 
+**[Open the public static fixture demo](https://lanceglass-fixture-demo.laris.workers.dev/)** —
+the production React UI with 1,000 bundled synthetic events. It uses no KV,
+no D1, no database binding, and no persistence; import actions are deterministic
+simulations that reset to the same fixture state.
+
 ## Why Lanceglass
 
 - **Know what changed before writing.** A metadata-only intake scan shows new,
@@ -190,7 +195,7 @@ bun run ui:build
 bun run smoke
 ```
 
-`bun run smoke` is the release gate. It currently covers 159 focused tests plus
+`bun run smoke` is the release gate. It currently covers 163 focused tests plus
 a nine-stage end-to-end fixture run.
 
 ## Project map

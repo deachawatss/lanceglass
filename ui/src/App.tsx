@@ -17,6 +17,12 @@ import {
 
 type Counts = { events: number; event_sources: number; source_files: number };
 type Status = {
+  demo?: {
+    enabled: boolean;
+    label: string;
+    storage: string;
+    persistence: string;
+  };
   db_dir: string;
   fixture_root: string;
   source_presets: {
@@ -1586,10 +1592,16 @@ export function App() {
           />
           <span>
             <strong>
-              {status ? "LanceDB connected" : "Connecting to LanceDB"}
+              {status?.demo?.enabled
+                ? status.demo.label
+                : status
+                  ? "LanceDB connected"
+                  : "Connecting to LanceDB"}
             </strong>
             <small title={status?.db_dir}>
-              {status?.db_dir ?? "localhost · port 4320"}
+              {status?.demo?.enabled
+                ? "bundled data · no KV · no D1 · no persistence"
+                : status?.db_dir ?? "localhost · port 4320"}
             </small>
           </span>
         </div>

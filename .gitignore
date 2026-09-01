@@ -4,6 +4,7 @@ node_modules/
 ui/dist/
 maw-plugin/dist/
 coverage/
+.wrangler/
 .env
 .env.*
 !.env.example
