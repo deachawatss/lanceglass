@@ -25,6 +25,7 @@ const baseLocation = (overrides: Partial<WorkspaceLocation> = {}): WorkspaceLoca
   vectorProviders: ["dual-4090"],
   vectorActors: ["human", "agent"],
   vectorView: "3d",
+  vectorBreadth: "session",
   ...overrides,
 });
 
@@ -65,6 +66,7 @@ describe("workspace URL state", () => {
       vectorProviders: ["dual-4090"],
       vectorActors: ["human", "agent"],
       vectorView: "3d",
+      vectorBreadth: "session",
     });
   });
 
@@ -87,6 +89,7 @@ describe("workspace URL state", () => {
       vectorProviders: ["dual-4090"],
       vectorActors: ["human", "agent"],
       vectorView: "3d",
+      vectorBreadth: "session",
     }));
     const url = new URL(href, "http://127.0.0.1");
 
@@ -139,6 +142,7 @@ describe("workspace URL state", () => {
       vectorProviders: ["dual-4090", "cloudflare"],
       vectorActors: ["human"],
       vectorView: "3d",
+      vectorBreadth: "session",
     }));
     const url = new URL(href, "http://127.0.0.1");
 
@@ -153,6 +157,7 @@ describe("workspace URL state", () => {
       vectorProviders: ["dual-4090", "cloudflare"],
       vectorActors: ["human"],
       vectorView: "3d",
+      vectorBreadth: "session",
     }));
     expect(url.searchParams.getAll("vector_provider")).toEqual(["dual-4090", "cloudflare"]);
     expect(url.searchParams.getAll("vector_actor")).toEqual(["human"]);

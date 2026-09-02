@@ -9,6 +9,7 @@ import { EMBEDDING_DEPLOYMENTS } from "../src/embedding-provider";
 import {
   HistoryVectorInputError,
   HistoryVectorStoreError,
+  MAX_HISTORY_VECTOR_POINTS,
   parseHistoryVectorRequest,
   visualizeHistoryVectors,
 } from "../src/history-vectors";
@@ -134,13 +135,112 @@ describe("history vector request", () => {
     for (const query of [
       "date=2026-08-31&source=claude&project=p&folder=f&session_id=s",
       "deployment=m5-ollama&date=2026-08-31&source=claude&project=p&folder=f&session_id=s",
-      "deployment=cloudflare&date=2026-08-31&source=claude&project=p&folder=f&session_id=s&limit=501",
+      `deployment=cloudflare&date=2026-08-31&source=claude&project=p&folder=f&session_id=s&limit=${MAX_HISTORY_VECTOR_POINTS + 1}`,
       "deployment=cloudflare&date=2026-08-31&source=claude&project=p&folder=f&session_id=s&actor=",
       "deployment=cloudflare&date=2026-08-31&source=claude&project=p&folder=f&session_id=s&actor=robot",
     ]) {
       expect(() => parseHistoryVectorRequest(new URL(`http://localhost/api?${query}`)))
         .toThrow(HistoryVectorInputError);
     }
+  });
+});
+
+describe("history vector scope widening", () => {
+  test("an empty session_id includes every session, an exact one does not", async () => {
+    const { db, definition } = await fixture("dual-4090");
+    // Two sessions, same project, same folder, same Bangkok day.
+    const inSession = event("in-session", "2026-08-30T18:00:00.000Z", "a".repeat(100));
+    const otherSession = event("other-session", "2026-08-30T18:10:00.000Z", "b".repeat(100));
+    otherSession.session_id = "session-2";
+    await db.plain.events().insert([inSession, otherSession]);
+    await db.plain.occurrences().insert([
+      occurrence("s1", inSession.id, "/archive/neo/session.jsonl"),
+      occurrence("s2", otherSession.id, "/archive/neo/session.jsonl"),
+    ]);
+    const dimension = definition.config.space.dimension;
+    await db.vector.eventVectors().upsert([
+      vector(inSession, Array.from({ length: dimension }, (_, i) => i === 0 ? 1 : 0), definition.config.space.model),
+      vector(otherSession, Array.from({ length: dimension }, (_, i) => i === 1 ? 1 : 0), definition.config.space.model),
+    ]);
+
+    const narrow = await visualizeHistoryVectors(db.plain, db.vector, exactScope);
+    const wide = await visualizeHistoryVectors(db.plain, db.vector, { ...exactScope, session_id: "" });
+
+    // Two events exist on this day/project/folder; the narrow scope must see only its own.
+    expect(narrow.coverage.eligible).toBe(1);
+    expect(narrow.points.map((p) => p.event_id)).toEqual(["in-session"]);
+    expect(wide.coverage.eligible).toBe(2);
+    expect(wide.points.map((p) => p.event_id).sort()).toEqual(["in-session", "other-session"]);
+  });
+
+  test("an empty project includes every project", async () => {
+    const { db, definition } = await fixture("dual-4090");
+    const here = event("here", "2026-08-30T18:00:00.000Z", "a".repeat(100));
+    const elsewhere = event("elsewhere", "2026-08-30T18:10:00.000Z", "b".repeat(100), "other-oracle");
+    await db.plain.events().insert([here, elsewhere]);
+    await db.plain.occurrences().insert([
+      occurrence("p1", here.id, "/archive/neo/session.jsonl"),
+      occurrence("p2", elsewhere.id, "/archive/neo/session.jsonl"),
+    ]);
+    const dimension = definition.config.space.dimension;
+    await db.vector.eventVectors().upsert([
+      vector(here, Array.from({ length: dimension }, (_, i) => i === 0 ? 1 : 0), definition.config.space.model),
+      vector(elsewhere, Array.from({ length: dimension }, (_, i) => i === 1 ? 1 : 0), definition.config.space.model),
+    ]);
+
+    const narrow = await visualizeHistoryVectors(db.plain, db.vector, exactScope);
+    const wide = await visualizeHistoryVectors(db.plain, db.vector, { ...exactScope, project: "" });
+
+    expect(narrow.points.map((p) => p.event_id)).toEqual(["here"]);
+    expect(wide.points.map((p) => p.event_id).sort()).toEqual(["elsewhere", "here"]);
+  });
+
+  test("an empty folder includes every folder", async () => {
+    const { db, definition } = await fixture("dual-4090");
+    const neo = event("neo", "2026-08-30T18:00:00.000Z", "a".repeat(100));
+    const other = event("other", "2026-08-30T18:10:00.000Z", "b".repeat(100));
+    await db.plain.events().insert([neo, other]);
+    await db.plain.occurrences().insert([
+      occurrence("f1", neo.id, "/archive/neo/session.jsonl"),
+      occurrence("f2", other.id, "/archive/elsewhere/session.jsonl"),
+    ]);
+    const dimension = definition.config.space.dimension;
+    await db.vector.eventVectors().upsert([
+      vector(neo, Array.from({ length: dimension }, (_, i) => i === 0 ? 1 : 0), definition.config.space.model),
+      vector(other, Array.from({ length: dimension }, (_, i) => i === 1 ? 1 : 0), definition.config.space.model),
+    ]);
+
+    const narrow = await visualizeHistoryVectors(db.plain, db.vector, exactScope);
+    const wide = await visualizeHistoryVectors(db.plain, db.vector, { ...exactScope, folder: "" });
+
+    expect(narrow.points.map((p) => p.event_id)).toEqual(["neo"]);
+    expect(wide.points.map((p) => p.event_id).sort()).toEqual(["neo", "other"]);
+  });
+
+  test("the date and source axes still narrow when everything else is widened", async () => {
+    const { db, definition } = await fixture("dual-4090");
+    const onDay = event("on-day", "2026-08-30T18:00:00.000Z", "a".repeat(100));
+    const otherDay = event("other-day", "2026-08-29T18:00:00.000Z", "b".repeat(100));
+    const otherSource = event("other-source", "2026-08-30T18:20:00.000Z", "c".repeat(100));
+    otherSource.source = "codex";
+    await db.plain.events().insert([onDay, otherDay, otherSource]);
+    await db.plain.occurrences().insert([
+      occurrence("d1", onDay.id, "/archive/neo/session.jsonl"),
+      occurrence("d2", otherDay.id, "/archive/neo/session.jsonl"),
+    ]);
+    const dimension = definition.config.space.dimension;
+    await db.vector.eventVectors().upsert([
+      vector(onDay, Array.from({ length: dimension }, (_, i) => i === 0 ? 1 : 0), definition.config.space.model),
+      vector(otherDay, Array.from({ length: dimension }, (_, i) => i === 1 ? 1 : 0), definition.config.space.model),
+    ]);
+
+    const wide = await visualizeHistoryVectors(db.plain, db.vector, {
+      ...exactScope, project: "", folder: "", session_id: "",
+    });
+
+    // 2026-08-30T18:00Z is 2026-08-31 in Bangkok; the 08-29 event is a different day and
+    // the codex event is a different source. Neither may appear.
+    expect(wide.points.map((p) => p.event_id)).toEqual(["on-day"]);
   });
 });
 

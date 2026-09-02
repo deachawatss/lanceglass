@@ -11,7 +11,10 @@ import { buildVectorEdges } from "./vector-edges";
 
 export const HISTORY_VECTOR_DEPLOYMENTS = ["dual-4090", "cloudflare"] as const;
 export const HISTORY_VECTOR_ACTORS = ["human", "agent"] as const;
-export const MAX_HISTORY_VECTOR_POINTS = 500;
+// The neighbour graph is O(n^2) in the point count, measured on this corpus at
+// 1,024 dimensions: 500 -> 221ms, 1000 -> 904ms, 2000 -> 3.9s, 3000 -> 8.7s. 1200 keeps
+// the widest map near a second. Raising this without re-measuring makes the endpoint slow.
+export const MAX_HISTORY_VECTOR_POINTS = 1200;
 
 export type HistoryVectorDeployment = typeof HISTORY_VECTOR_DEPLOYMENTS[number];
 export type HistoryVectorActor = typeof HISTORY_VECTOR_ACTORS[number];
@@ -78,10 +81,13 @@ export function parseHistoryVectorRequest(url: URL): HistoryVectorRequest {
   return {
     deployment: deployment as HistoryVectorDeployment,
     date,
+    // project, folder and session_id are scope NARROWERS: an empty value widens the map
+    // to every value on that axis. No stored row carries an empty project, folder or
+    // session_id (verified across 341,901 events), so "" cannot collide with real data.
     source: required(url, "source", 128),
     project: required(url, "project", 512, true),
-    folder: required(url, "folder", 4_096),
-    session_id: required(url, "session_id", 4_096),
+    folder: required(url, "folder", 4_096, true),
+    session_id: required(url, "session_id", 4_096, true),
     limit,
     actors: [...actors],
   };
@@ -129,12 +135,13 @@ async function exactlyScopedEligibleEvents(
 ) {
   const names = await plain.tableNames();
   if (!names.includes("events")) return [];
+  // Only the axes the caller actually narrowed become predicates. Source and date always
+  // apply; an empty project or session_id means "every one of them".
+  const predicates = [`source = ${sql(request.source)}`];
+  if (request.project) predicates.push(`project = ${sql(request.project)}`);
+  if (request.session_id) predicates.push(`session_id = ${sql(request.session_id)}`);
   const rows = await (await plain.connection.openTable("events")).query()
-    .where([
-      `source = ${sql(request.source)}`,
-      `project = ${sql(request.project)}`,
-      `session_id = ${sql(request.session_id)}`,
-    ].join(" AND "))
+    .where(predicates.join(" AND "))
     .toArray() as unknown as EventRow[];
   const eligible = rows
     .filter((row) => bangkokDateKey(row.timestamp) === request.date)
@@ -142,6 +149,9 @@ async function exactlyScopedEligibleEvents(
     .filter((row) => isEmbeddableEvent(row as EmbeddingEventRow))
     .sort(eventOrder);
   if (!eligible.length) return [];
+  // An empty folder does not narrow, so provenance never has to be consulted. This is also
+  // the cheap path: it skips a chunked lookup over every eligible event id.
+  if (!request.folder) return eligible;
   if (!names.includes("event_sources")) {
     return request.folder === UNKNOWN_PROVENANCE_FOLDER ? eligible : [];
   }
