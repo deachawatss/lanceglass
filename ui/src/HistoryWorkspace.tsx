@@ -25,6 +25,13 @@ import {
   type VectorVisualizationPoint,
   type VectorVisualizationProps,
 } from "./vector-visualization";
+import {
+  VECTOR_BREADTH_LABEL,
+  VECTOR_BREADTH_LIMIT,
+  VECTOR_BREADTHS,
+  widenVectorScope,
+  type VectorBreadth,
+} from "./vector-scope";
 
 export { pointCoordinates } from "./vector-visualization";
 
@@ -175,6 +182,7 @@ type VectorProviderState = {
 
 type VectorMapState = {
   scope: HistoryVectorScope;
+  breadth: VectorBreadth;
   providers: VectorProvider[];
   actors: VectorActor[];
   view: VectorView;
@@ -202,6 +210,7 @@ type Props = {
   vectorProviders?: VectorProvider[];
   vectorActors?: VectorActor[];
   vectorView?: VectorView;
+  vectorBreadth?: VectorBreadth;
   vectorDate?: string;
   vectorSource?: string;
   vectorProject?: string;
@@ -212,6 +221,7 @@ type Props = {
   onVectorProvidersChange?: (providers: VectorProvider[]) => void;
   onVectorActorsChange?: (actors: VectorActor[]) => void;
   onVectorViewChange?: (view: VectorView) => void;
+  onVectorBreadthChange?: (breadth: VectorBreadth) => void;
 };
 
 const nf = new Intl.NumberFormat("en-GB");
@@ -332,15 +342,20 @@ export function buildHistoryVectorQuery(
   scope: HistoryVectorScope,
   provider: VectorProvider,
   actors: readonly VectorActor[] = VECTOR_ACTORS,
+  breadth: VectorBreadth = "session",
 ) {
+  // The stored scope always names the session the map was opened from; breadth decides how
+  // much of it to keep. Widening clears axes, because the server reads an empty axis as
+  // "every value".
+  const widened = widenVectorScope(scope, breadth);
   const query = new URLSearchParams({
     deployment: provider,
-    date: scope.date,
-    source: scope.source,
-    project: scope.project,
-    folder: scope.folder,
-    session_id: scope.session_id,
-    limit: "200",
+    date: widened.date,
+    source: widened.source,
+    project: widened.project,
+    folder: widened.folder,
+    session_id: widened.session_id,
+    limit: String(VECTOR_BREADTH_LIMIT[breadth]),
   });
   for (const actor of actors) query.append("actor", actor);
   return query;
@@ -364,13 +379,14 @@ function providerStates(providers: readonly VectorProvider[], loading: boolean) 
   }])) as Partial<Record<VectorProvider, VectorProviderState>>;
 }
 
-function readVectorMapFromLocation(): Pick<VectorMapState, "scope" | "providers" | "actors" | "view"> | null {
+function readVectorMapFromLocation(): Pick<VectorMapState, "scope" | "providers" | "actors" | "view"> & { breadth: VectorBreadth } | null {
   const location = readWorkspaceLocation(window.location);
   if (location.vectorOperation !== "vectors" || !location.vectorSession) return null;
   return {
     providers: location.vectorProviders ?? ["dual-4090"],
     actors: location.vectorActors ?? [...VECTOR_ACTORS],
     view: location.vectorView ?? "3d",
+    breadth: location.vectorBreadth ?? "session",
     scope: {
       date: location.vectorDate ?? "",
       source: location.vectorSource ?? "",
@@ -382,10 +398,10 @@ function readVectorMapFromLocation(): Pick<VectorMapState, "scope" | "providers"
 }
 
 function writeVectorMapLocation(
-  state: Pick<VectorMapState, "scope" | "providers" | "actors" | "view"> | null,
+  state: Pick<VectorMapState, "scope" | "providers" | "actors" | "view" | "breadth"> | null,
 ) {
   const url = new URL(window.location.href);
-  for (const key of ["operate", "vector_provider", "vector_actor", "vector_view", "vector_date", "vector_source", "vector_project", "vector_folder", "vector_session"]) {
+  for (const key of ["operate", "vector_provider", "vector_actor", "vector_view", "vector_breadth", "vector_date", "vector_source", "vector_project", "vector_folder", "vector_session"]) {
     url.searchParams.delete(key);
   }
   if (state) {
@@ -393,6 +409,7 @@ function writeVectorMapLocation(
     for (const provider of state.providers) url.searchParams.append("vector_provider", provider);
     for (const actor of state.actors) url.searchParams.append("vector_actor", actor);
     url.searchParams.set("vector_view", state.view);
+    url.searchParams.set("vector_breadth", state.breadth);
     url.searchParams.set("vector_date", state.scope.date);
     url.searchParams.set("vector_source", state.scope.source);
     url.searchParams.set("vector_project", state.scope.project);
@@ -504,6 +521,7 @@ export function HistoryWorkspace({
   vectorProviders,
   vectorActors,
   vectorView,
+  vectorBreadth,
   vectorDate = "",
   vectorSource = "",
   vectorProject = "",
@@ -514,6 +532,7 @@ export function HistoryWorkspace({
   onVectorProvidersChange,
   onVectorActorsChange,
   onVectorViewChange,
+  onVectorBreadthChange,
 }: Props) {
   const [history, setHistory] = useState<HistoryResponse | null>(null);
   const [busy, setBusy] = useState(true);
@@ -538,6 +557,7 @@ export function HistoryWorkspace({
   const requestedProviders = canonicalSelection(vectorProviders, VECTOR_PROVIDERS, ["dual-4090"]);
   const requestedActors = canonicalSelection(vectorActors, VECTOR_ACTORS, VECTOR_ACTORS);
   const requestedView = vectorView ?? "3d";
+  const requestedBreadth = vectorBreadth ?? "session";
   const requestedProvidersKey = requestedProviders.join(",");
   const requestedActorsKey = requestedActors.join(",");
 
@@ -558,16 +578,21 @@ export function HistoryWorkspace({
       const sameScope = current && vectorScopeKey(scope) === vectorScopeKey(current.scope);
       const sameProviders = current?.providers.join(",") === requestedProvidersKey;
       const sameActors = current?.actors.join(",") === requestedActorsKey;
-      if (sameScope && sameProviders && sameActors && current.view === requestedView) return current;
+      // Breadth changes which events the server returns, so it invalidates cached maps
+      // exactly like a scope change does.
+      const sameBreadth = current?.breadth === requestedBreadth;
+      if (sameScope && sameProviders && sameActors && sameBreadth && current.view === requestedView) {
+        return current;
+      }
+      const reusable = sameScope && sameProviders && sameActors && sameBreadth;
       return {
         scope,
+        breadth: requestedBreadth,
         providers: requestedProviders,
         actors: requestedActors,
         view: requestedView,
-        maps: sameScope && sameProviders && sameActors
-          ? current.maps
-          : providerStates(requestedProviders, true),
-        selectedEventId: sameScope && sameActors ? current.selectedEventId : "",
+        maps: reusable ? current.maps : providerStates(requestedProviders, true),
+        selectedEventId: sameScope && sameActors && sameBreadth ? current.selectedEventId : "",
       };
     });
   }, [requestedActorsKey, requestedProvidersKey, requestedView, vectorDate, vectorFolder, vectorOperation, vectorProject, vectorSession, vectorSource]);
@@ -596,7 +621,7 @@ export function HistoryWorkspace({
       },
     } : current);
     providers.forEach((provider, index) => {
-      const query = buildHistoryVectorQuery(vectorMap.scope, provider, actors);
+      const query = buildHistoryVectorQuery(vectorMap.scope, provider, actors, vectorMap.breadth);
       void json<VectorMapResponse>(`/api/vectors/visualize?${query}`, controllers[index]!.signal)
         .then((response) => setVectorMap((current) => {
           if (!current || vectorRequestRef.current !== requestId || !current.providers.includes(provider)) return current;
@@ -642,9 +667,11 @@ export function HistoryWorkspace({
     const actors = requestedActors;
     const view = requestedView;
     vectorTriggerRef.current = trigger;
-    if (!onVectorOpen) writeVectorMapLocation({ scope, providers, actors, view });
+    const breadth = requestedBreadth;
+    if (!onVectorOpen) writeVectorMapLocation({ scope, providers, actors, view, breadth });
     setVectorMap({
       scope,
+      breadth,
       providers,
       actors,
       view,
@@ -695,6 +722,16 @@ export function HistoryWorkspace({
       return next;
     });
     onVectorViewChange?.(view);
+  };
+
+  const changeVectorBreadth = (breadth: VectorBreadth) => {
+    setVectorMap((current) => {
+      if (!current) return current;
+      const next = { ...current, breadth };
+      if (!onVectorBreadthChange) writeVectorMapLocation(next);
+      return next;
+    });
+    onVectorBreadthChange?.(breadth);
   };
 
   const clearSessionDetails = useCallback(() => {
@@ -1151,6 +1188,7 @@ export function HistoryWorkspace({
           onProvidersChange={changeVectorProviders}
           onActorsChange={changeVectorActors}
           onViewChange={changeVectorView}
+          onBreadthChange={changeVectorBreadth}
           onRetry={() => setVectorRefreshCycle((cycle) => cycle + 1)}
           onSelect={(selectedEventId) => setVectorMap((current) => current ? { ...current, selectedEventId } : current)}
         />
@@ -1175,6 +1213,7 @@ function VectorInspector({
   onProvidersChange,
   onActorsChange,
   onViewChange,
+  onBreadthChange,
   onRetry,
   onSelect,
 }: {
@@ -1183,6 +1222,7 @@ function VectorInspector({
   onProvidersChange: (providers: VectorProvider[]) => void;
   onActorsChange: (actors: VectorActor[]) => void;
   onViewChange: (view: VectorView) => void;
+  onBreadthChange: (breadth: VectorBreadth) => void;
   onRetry: () => void;
   onSelect: (eventId: string) => void;
 }) {
@@ -1301,9 +1341,14 @@ function VectorInspector({
     <aside ref={inspectorRef} id="history-vector-inspector" className={`vector-inspector ${compare ? "is-compare" : ""}`} role="dialog" aria-modal={isMobileDialog} aria-labelledby="vector-inspector-title" data-testid="vector-inspector" tabIndex={-1}>
       <header className="vector-inspector-header">
         <div>
-          <h2 id="vector-inspector-title">{compare ? "Compare vector maps" : "Session vector map"}</h2>
+          <h2 id="vector-inspector-title">{compare ? "Compare vector maps" : `${VECTOR_BREADTH_LABEL[state.breadth].title} vector map`}</h2>
           <p>
-            <time dateTime={state.scope.date}>{prettyDate(state.scope.date)}</time> · {sourceLabel(state.scope.source)} · {state.scope.project || "Unknown project"} · {compactFolderLabel(state.scope.folder)} · #{shortSession}
+            {/* Only name the axes this breadth actually pins. Naming a session while
+                showing every session on the day would misdescribe what is on screen. */}
+            <time dateTime={state.scope.date}>{prettyDate(state.scope.date)}</time> · {sourceLabel(state.scope.source)}
+            {state.breadth !== "day" && <> · {state.scope.project || "Unknown project"} · {compactFolderLabel(state.scope.folder)}</>}
+            {state.breadth === "session" && <> · #{shortSession}</>}
+            {state.breadth !== "session" && <> · {VECTOR_BREADTH_LABEL[state.breadth].hint}</>}
           </p>
         </div>
         <button className="button-quiet" type="button" autoFocus onClick={onClose}>Close</button>
@@ -1337,6 +1382,23 @@ function VectorInspector({
                 </label>
               );
             })}
+          </div>
+        </fieldset>
+        <fieldset className="vector-choice-group vector-view-choice">
+          <legend>Scope</legend>
+          <div className="vector-view-toggle" role="group" aria-label="Vector map scope">
+            {VECTOR_BREADTHS.map((breadth) => (
+              <button
+                key={breadth}
+                type="button"
+                aria-pressed={state.breadth === breadth}
+                onClick={() => onBreadthChange(breadth)}
+                title={`Map ${VECTOR_BREADTH_LABEL[breadth].hint}, up to ${VECTOR_BREADTH_LIMIT[breadth]} points`}
+              >
+                <strong>{VECTOR_BREADTH_LABEL[breadth].title}</strong>
+                <small>{VECTOR_BREADTH_LABEL[breadth].hint}</small>
+              </button>
+            ))}
           </div>
         </fieldset>
         <fieldset className="vector-choice-group vector-view-choice">

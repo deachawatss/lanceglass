@@ -14,6 +14,7 @@ import {
   type WorkspaceLocation,
   type WorkspaceName,
 } from "./location";
+import type { VectorBreadth } from "./vector-scope";
 
 type Counts = { events: number; event_sources: number; source_files: number };
 type Status = {
@@ -115,6 +116,7 @@ type HistoryVectorLocation = {
   providers: VectorProvider[];
   actors: VectorActor[];
   view: VectorView;
+  breadth: VectorBreadth;
   date: string;
   source: string;
   project: string;
@@ -207,6 +209,7 @@ const initialLocation = typeof window === "undefined"
       vectorProviders: ["dual-4090"],
       vectorActors: ["human", "agent"],
       vectorView: "3d",
+      vectorBreadth: "session",
     } satisfies WorkspaceLocation
   : readWorkspaceLocation(window.location);
 async function json<T>(url: string, init?: RequestInit) {
@@ -523,6 +526,7 @@ export function App() {
       providers: initialLocation.vectorProviders ?? ["dual-4090"],
       actors: initialLocation.vectorActors ?? ["human", "agent"],
       view: initialLocation.vectorView ?? "3d",
+      breadth: initialLocation.vectorBreadth ?? "session",
       date: initialLocation.vectorDate ?? "",
       source: initialLocation.vectorSource ?? "",
       project: initialLocation.vectorProject ?? "",
@@ -889,6 +893,7 @@ export function App() {
       vectorProviders: historyVector.providers,
       vectorActors: historyVector.actors,
       vectorView: historyVector.view,
+      vectorBreadth: historyVector.breadth,
     }),
     [eventFolder, eventProject, eventSource, historyDate, historyPeriod, historyVector, selectedJobId, view, workspaceView],
   );
@@ -945,10 +950,12 @@ export function App() {
     vectorProviders: vector.providers,
     vectorActors: vector.actors,
     vectorView: vector.view,
+    vectorBreadth: vector.breadth,
   }), [locationState]);
   const openHistoryVector = useCallback((scope: HistoryVectorScope) => {
     const next: HistoryVectorLocation = {
       operation: "vectors",
+      breadth: historyVector.breadth,
       providers: historyVector.providers,
       actors: historyVector.actors,
       view: historyVector.view,
@@ -973,6 +980,7 @@ export function App() {
     }
     const next: HistoryVectorLocation = {
       operation: "",
+      breadth: historyVector.breadth,
       providers: historyVector.providers,
       actors: historyVector.actors,
       view: historyVector.view,
@@ -1000,6 +1008,11 @@ export function App() {
     setHistoryVector(next);
     writeLocation(locationWithHistoryVector(next));
   }, [historyVector, locationWithHistoryVector, writeLocation]);
+  const changeHistoryVectorBreadth = useCallback((nextBreadth: VectorBreadth) => {
+    const next = { ...historyVector, breadth: nextBreadth };
+    setHistoryVector(next);
+    writeLocation(locationWithHistoryVector(next));
+  }, [historyVector, locationWithHistoryVector, writeLocation]);
   useEffect(() => {
     writeLocation(locationState());
   }, [locationState, status, writeLocation]);
@@ -1022,6 +1035,7 @@ export function App() {
         providers: next.vectorProviders ?? ["dual-4090"],
         actors: next.vectorActors ?? ["human", "agent"],
         view: next.vectorView ?? "3d",
+        breadth: next.vectorBreadth ?? "session",
         date: next.vectorDate ?? "",
         source: next.vectorSource ?? "",
         project: next.vectorProject ?? "",
@@ -2104,6 +2118,7 @@ export function App() {
             vectorProviders={historyVector.providers}
             vectorActors={historyVector.actors}
             vectorView={historyVector.view}
+            vectorBreadth={historyVector.breadth}
             vectorDate={historyVector.date}
             vectorSource={historyVector.source}
             vectorProject={historyVector.project}
@@ -2114,6 +2129,7 @@ export function App() {
             onVectorProvidersChange={changeHistoryVectorProviders}
             onVectorActorsChange={changeHistoryVectorActors}
             onVectorViewChange={changeHistoryVectorView}
+            onVectorBreadthChange={changeHistoryVectorBreadth}
           />
         ) : (
           <section className="jobs-pane" aria-labelledby="jobs-heading">

@@ -2,6 +2,7 @@ import {
   normalizeVectorVisualizationId,
   type VectorView,
 } from "./vector-visualizations";
+import { normalizeVectorBreadth, type VectorBreadth } from "./vector-scope";
 
 export type { VectorView } from "./vector-visualizations";
 
@@ -38,6 +39,7 @@ export type WorkspaceLocation = {
   vectorProviders?: VectorProvider[];
   vectorActors?: VectorActor[];
   vectorView?: VectorView;
+  vectorBreadth?: VectorBreadth;
 };
 
 const ALL_SOURCES = "*";
@@ -97,6 +99,10 @@ export function readVectorActors(query: URLSearchParams): VectorActor[] {
   return selectedValues(query.getAll("vector_actor"), VECTOR_ACTORS, VECTOR_ACTORS);
 }
 
+export function readVectorBreadth(value: string | null): VectorBreadth {
+  return normalizeVectorBreadth(value);
+}
+
 export function readVectorView(value: string | null): VectorView {
   return normalizeVectorVisualizationId(value);
 }
@@ -133,6 +139,7 @@ export function readWorkspaceLocation(location: Pick<Location, "search">): Works
     vectorProviders: vectorOperation ? readVectorProviders(query) : ["dual-4090"],
     vectorActors: vectorOperation ? readVectorActors(query) : [...VECTOR_ACTORS],
     vectorView: vectorOperation ? readVectorView(query.get("vector_view")) : "3d",
+    vectorBreadth: vectorOperation ? readVectorBreadth(query.get("vector_breadth")) : "session",
   };
 }
 
@@ -162,6 +169,7 @@ export function workspaceHref(
       VECTOR_ACTORS,
     )) query.append("vector_actor", actor);
     query.set("vector_view", location.vectorView ?? "3d");
+    query.set("vector_breadth", location.vectorBreadth ?? "session");
     query.set("vector_date", location.vectorDate ?? "");
     query.set("vector_source", location.vectorSource ?? "");
     query.set("vector_project", location.vectorProject ?? "");
