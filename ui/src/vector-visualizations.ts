@@ -28,6 +28,28 @@ export const VECTOR_VISUALIZATIONS = createVectorVisualizationRegistry([
     configControls: [],
     load: async () => ({ default: VectorMap2D }),
   },
+  {
+    id: "hologram",
+    label: "Hologram",
+    description: "Lay points out by their nearest neighbours in the full embedding space, not by the projection.",
+    dimension: 2,
+    defaultConfig: { links: true, glow: true },
+    configControls: [
+      {
+        key: "links",
+        type: "toggle",
+        label: "Show links",
+        description: "Draw the neighbour edges the layout is built from.",
+      },
+      {
+        key: "glow",
+        type: "toggle",
+        label: "Glow",
+        description: "Render points with a soft halo.",
+      },
+    ],
+    load: async () => ({ default: (await import("./VectorHologram")).VectorHologram }),
+  },
 ] as const satisfies readonly VectorVisualizationPlugin[]);
 
 export const VECTOR_VISUALIZATION_IDS = Object.freeze(VECTOR_VISUALIZATIONS.map(({ id }) => id));

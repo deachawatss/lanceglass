@@ -27,12 +27,34 @@ const plugin = (overrides: Partial<VectorVisualizationPlugin> = {}): VectorVisua
 
 describe("vector visualization registry", () => {
   test("publishes stable URL-compatible built-ins with Atlas 3D as the default", () => {
-    expect(VECTOR_VISUALIZATION_IDS).toEqual(["3d", "2d"]);
-    expect(VECTOR_VISUALIZATIONS.map(({ label }) => label)).toEqual(["Atlas 3D", "Flat 2D"]);
+    expect(VECTOR_VISUALIZATION_IDS).toEqual(["3d", "2d", "hologram"]);
+    expect(VECTOR_VISUALIZATIONS.map(({ label }) => label)).toEqual(["Atlas 3D", "Flat 2D", "Hologram"]);
     expect(normalizeVectorVisualizationId("2d")).toBe("2d");
     expect(normalizeVectorVisualizationId("future-view")).toBe("3d");
     expect(normalizeVectorVisualizationId(null)).toBe("3d");
     expect(getVectorVisualization(undefined).id).toBe("3d");
+  });
+
+
+  test("registers the hologram plugin with defaults for every control", () => {
+    const hologram = getVectorVisualization("hologram");
+    expect(hologram.id).toBe("hologram");
+    expect(hologram.dimension).toBe(2);
+    // The contract requires defaultConfig to supply every key configControls names.
+    for (const control of hologram.configControls) {
+      expect(Object.keys(hologram.defaultConfig)).toContain(control.key);
+    }
+    expect(hologram.defaultConfig).toEqual({ links: true, glow: true });
+  });
+
+  test("resolves hologram from a URL value and falls back for an unknown one", () => {
+    expect(normalizeVectorVisualizationId("hologram")).toBe("hologram");
+    expect(normalizeVectorVisualizationId("holo")).toBe("3d");
+  });
+
+  test("loads the hologram component lazily", async () => {
+    const loaded = await getVectorVisualization("hologram").load();
+    expect(typeof loaded.default).toBe("function");
   });
 
   test("rejects duplicate ids and controls without default config", () => {

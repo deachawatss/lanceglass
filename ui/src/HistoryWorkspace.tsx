@@ -20,6 +20,7 @@ import {
 } from "./vector-visualizations";
 import {
   type VectorVisualizationConfig,
+  type VectorVisualizationEdge,
   type VectorVisualizationPlugin,
   type VectorVisualizationPoint,
   type VectorVisualizationProps,
@@ -160,6 +161,9 @@ type VectorMapResponse = {
   coverage: { eligible: number; embedded: number; missing: number; sampled: number };
   projection: { method: string; explained_variance: number | null };
   points: VectorPoint[];
+  // Neighbour graph over `points`, computed server-side from the raw vectors.
+  // Optional so an older server that predates it still deserializes.
+  edges?: VectorVisualizationEdge[];
   error?: string;
 };
 
@@ -1461,11 +1465,15 @@ function VectorProviderMap({
 }) {
   const [unavailableReason, setUnavailableReason] = useState("");
   const points = state.response?.points ?? [];
+  const edges = state.response?.edges ?? [];
   const coverage = state.response?.coverage;
   const partial = Boolean(coverage && coverage.embedded > 0 && coverage.missing > 0);
   const sampled = Boolean(coverage && coverage.sampled < coverage.embedded);
   const requestedPlugin = getVectorVisualization(view);
-  const effectivePlugin = unavailableReason && requestedPlugin.id === "3d"
+  // Any plugin can report itself unavailable (missing WebGL, for example), not
+  // just the 3D atlas, so the fallback keys off the declared dimension rather
+  // than a hardcoded id.
+  const effectivePlugin = unavailableReason && requestedPlugin.dimension === 3
     ? getVectorVisualization("2d")
     : requestedPlugin;
   const Visualization = VECTOR_VISUALIZATION_COMPONENTS[effectivePlugin.id];
@@ -1538,8 +1546,9 @@ function VectorProviderMap({
             >
               <Suspense fallback={<div className="vector-state" role="status"><strong>Loading {effectivePlugin.label}…</strong></div>}>
                 <Visualization
-                  className={effectivePlugin.id === "3d" ? "vector-map-3d" : "vector-map-2d"}
+                  className={effectivePlugin.dimension === 3 ? "vector-map-3d" : "vector-map-2d"}
                   points={points}
+                  edges={edges}
                   selectedEventId={selectedEventId}
                   onSelect={onSelect}
                   config={effectivePlugin.id === view ? config : effectivePlugin.defaultConfig}
